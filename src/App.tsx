@@ -16,7 +16,7 @@ function App() {
   const [sessionConfig, setSessionConfig] = useState<SessionConfig>({
     duration: 0,
     message: "Make Coffee",
-    delay: 30
+    delay: 3
   });
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -71,7 +71,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-transparent p-4">
       <div className="max-w-md mx-auto">
         <Card className="shadow-lg">
           <CardHeader className="text-center">

@@ -42,11 +42,7 @@ function OverlayApp() {
 
   if (!config) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center z-50" style={{
-        background: 'rgba(0, 0, 0, 0.3)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)'
-      }}>
+      <div className="fixed h-screen w-screen inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-xl" >
         <Card className="bg-white/95 backdrop-blur-sm shadow-2xl">
           <CardContent className="p-8 text-center">
             <div className="text-2xl font-bold text-gray-800">
@@ -59,12 +55,8 @@ function OverlayApp() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{
-      background: 'rgba(0, 0, 0, 0.3)',
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)'
-    }}>
-      <Card className="bg-white/95 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto border-0">
+    <div className="fixed h-screen w-screen inset-0 flex items-center justify-center z-50">
+      <Card className="bg-white/95 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto border-0 bg-transparent">
         <CardContent className="p-12 text-center">
           <div className="text-8xl mb-6">⏰</div>
           <h1 className="text-4xl font-bold text-gray-800 mb-6">

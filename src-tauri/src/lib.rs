@@ -1,6 +1,5 @@
 use tauri::{Manager, WebviewWindowBuilder, WebviewUrl, Emitter};
 use serde::{Deserialize, Serialize};
-use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 #[derive(Serialize, Deserialize)]
 struct OverlayConfig {
@@ -44,18 +43,9 @@ async fn create_overlay_window(
     .center()
     .inner_size(screen_size.width as f64, screen_size.height as f64)
     .decorations(false)
+    .transparent(true)
     .build()
     .map_err(|e| format!("Failed to create overlay window: {}", e))?;
-
-    // Apply vibrancy effect for macOS
-    #[cfg(target_os = "macos")]
-    {
-        println!("Applying vibrancy effect to overlay window");
-        match apply_vibrancy(&overlay_window, NSVisualEffectMaterial::WindowBackground, None, None) {
-            Ok(_) => println!("Vibrancy applied successfully"),
-            Err(e) => println!("Failed to apply vibrancy: {}", e),
-        }
-    }
 
     // Send the configuration to the overlay window
     overlay_window.emit("overlay-config", &overlay_config)
