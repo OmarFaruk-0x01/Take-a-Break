@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tauri::{WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
 use serde_json::json;
 
@@ -29,6 +29,51 @@ async fn get_session_config(app_handle: tauri::AppHandle) -> Result<OverlayConfi
             Ok(config)
         }
         None => Err("No session config found in store".to_string())
+    }
+}
+
+#[tauri::command]
+async fn hide_main_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        main_window.hide().map_err(|e| format!("Failed to hide main window: {}", e))?;
+        println!("Main window hidden from frontend");
+        Ok(())
+    } else {
+        Err("Main window not found".to_string())
+    }
+}
+
+#[tauri::command]
+async fn minimize_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        main_window.minimize().map_err(|e| format!("Failed to minimize window: {}", e))?;
+        Ok(())
+    } else {
+        Err("Main window not found".to_string())
+    }
+}
+
+#[tauri::command]
+async fn maximize_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        if main_window.is_maximized().map_err(|e| format!("Failed to check if maximized: {}", e))? {
+            main_window.unmaximize().map_err(|e| format!("Failed to unmaximize window: {}", e))?;
+        } else {
+            main_window.maximize().map_err(|e| format!("Failed to maximize window: {}", e))?;
+        }
+        Ok(())
+    } else {
+        Err("Main window not found".to_string())
+    }
+}
+
+#[tauri::command]
+async fn close_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        main_window.close().map_err(|e| format!("Failed to close window: {}", e))?;
+        Ok(())
+    } else {
+        Err("Main window not found".to_string())
     }
 }
 
@@ -88,6 +133,14 @@ async fn create_overlay_window(
             Ok(_) => println!("Overlay window closed successfully"),
             Err(e) => println!("Failed to close overlay window: {}", e),
         }
+
+        // Show the main window again after overlay closes
+        if let Some(main_window) = app_handle.get_webview_window("main") {
+            match main_window.show() {
+                Ok(_) => println!("Main window shown again"),
+                Err(e) => println!("Failed to show main window: {}", e),
+            }
+        }
     });
 
     Ok(())
@@ -98,7 +151,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, create_overlay_window, get_session_config])
+        .invoke_handler(tauri::generate_handler![greet, create_overlay_window, get_session_config, hide_main_window, minimize_window, maximize_window, close_window])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

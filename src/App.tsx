@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, Square, X } from "lucide-react";
 import { useState } from "react";
 import "./App.css";
 
@@ -21,9 +23,47 @@ function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
 
+  const handleMinimize = async () => {
+    try {
+      const window = getCurrentWindow();
+      await window.minimize();
+    } catch (error) {
+      console.error("Failed to minimize window:", error);
+    }
+  };
+
+  const handleMaximize = async () => {
+    try {
+      const window = getCurrentWindow();
+      if (await window.isMaximized()) {
+        await window.unmaximize();
+      } else {
+        await window.maximize();
+      }
+    } catch (error) {
+      console.error("Failed to maximize window:", error);
+    }
+  };
+
+  const handleClose = async () => {
+    try {
+      const window = getCurrentWindow();
+      await window.close();
+    } catch (error) {
+      console.error("Failed to close window:", error);
+    }
+  };
+
   const startSession = async () => {
     setIsSessionActive(true);
     setTimeRemaining(sessionConfig.duration * 60); // Convert to seconds
+
+    // Hide the main window immediately when session starts
+    // try {
+    //   await invoke("hide_main_window");
+    // } catch (error) {
+    //   console.error("Failed to hide main window:", error);
+    // }
 
     // Start the timer
     const timer = setInterval(() => {
@@ -71,15 +111,57 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-transparent p-4">
-      <div className="max-w-md mx-auto">
-        <Card className="shadow-lg">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-gray-800">Break Reminder</CardTitle>
-            <CardDescription>
-              Set your session duration and reminder message
-            </CardDescription>
-          </CardHeader>
+    <div className="min-h-screen bg-transparent">
+      {/* Custom Titlebar */}
+      <div className="bg-gray-100 border-b border-gray-200">
+        {/* Full Draggable Titlebar */}
+        <div
+          className="flex items-center justify-between px-4 py-2 cursor-move select-none"
+          data-tauri-drag-region
+        >
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+          </div>
+          <div className="flex items-center space-x-1" data-tauri-drag-region="false">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMinimize}
+              className="h-6 w-6 p-0 hover:bg-gray-200"
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMaximize}
+              className="h-6 w-6 p-0 hover:bg-gray-200"
+            >
+              <Square className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClose}
+              className="h-6 w-6 p-0 hover:bg-red-200 hover:text-red-600"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <div className="max-w-md mx-auto">
+          <Card className="shadow-lg">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-gray-800">Break Reminder</CardTitle>
+              <CardDescription>
+                Set your session duration and reminder message
+              </CardDescription>
+            </CardHeader>
           <CardContent className="space-y-6">
             {!isSessionActive ? (
               <>
@@ -155,6 +237,7 @@ function App() {
             )}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
