@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import "./App.css";
 
@@ -13,15 +13,21 @@ function OverlayApp() {
   const [timeRemaining, setTimeRemaining] = useState(0);
 
   useEffect(() => {
-    // Listen for the overlay configuration from the main window
-    const unlisten = listen<OverlayConfig>("overlay-config", (event) => {
-      setConfig(event.payload);
-      setTimeRemaining(event.payload.delay);
-    });
+    console.log("OverlayApp mounted, requesting session config from store");
 
-    return () => {
-      unlisten.then(fn => fn());
+    // Request session config from the store when the overlay is ready
+    const loadSessionConfig = async () => {
+      try {
+        const sessionConfig = await invoke<OverlayConfig>("get_session_config");
+        console.log("Received session config from store:", sessionConfig);
+        setConfig(sessionConfig);
+        setTimeRemaining(sessionConfig.delay);
+      } catch (error) {
+        console.error("Failed to load session config:", error);
+      }
     };
+
+    loadSessionConfig();
   }, []);
 
   useEffect(() => {
@@ -55,8 +61,8 @@ function OverlayApp() {
   }
 
   return (
-    <div className="fixed h-screen w-screen inset-0 flex items-center justify-center z-50">
-      <Card className="bg-white/95 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto border-0 bg-transparent">
+    <div className="fixed h-screen w-screen inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-xl">
+      <Card className="bg-white/95 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto border-0">
         <CardContent className="p-12 text-center">
           <div className="text-8xl mb-6">⏰</div>
           <h1 className="text-4xl font-bold text-gray-800 mb-6">

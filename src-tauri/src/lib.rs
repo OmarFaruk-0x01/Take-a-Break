@@ -1,7 +1,9 @@
-use tauri::{Manager, WebviewWindowBuilder, WebviewUrl, Emitter};
 use serde::{Deserialize, Serialize};
+use tauri::{WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_store::StoreExt;
+use serde_json::json;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct OverlayConfig {
     message: String,
     delay: u64,
@@ -14,15 +16,31 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
+async fn get_session_config(app_handle: tauri::AppHandle) -> Result<OverlayConfig, String> {
+    let store = app_handle.store("session.json")
+        .map_err(|e| format!("Failed to get store: {}", e))?;
+
+    match store.get("session-config") {
+        Some(config_value) => {
+            // Parse the JSON value back to OverlayConfig
+            let config: OverlayConfig = serde_json::from_value(config_value.clone())
+                .map_err(|e| format!("Failed to parse session config: {}", e))?;
+            println!("Retrieved session config from store: {:?}", config);
+            Ok(config)
+        }
+        None => Err("No session config found in store".to_string())
+    }
+}
+
+#[tauri::command]
 async fn create_overlay_window(
     app_handle: tauri::AppHandle,
     message: String,
     delay: u64,
 ) -> Result<(), String> {
-    let overlay_config = OverlayConfig { message, delay };
-
     // Get the primary monitor to get screen dimensions
-    let primary_monitor = app_handle.primary_monitor()
+    let primary_monitor = app_handle
+        .primary_monitor()
         .map_err(|e| format!("Failed to get primary monitor: {}", e))?
         .ok_or("No primary monitor found")?;
 
@@ -47,15 +65,25 @@ async fn create_overlay_window(
     .build()
     .map_err(|e| format!("Failed to create overlay window: {}", e))?;
 
-    // Send the configuration to the overlay window
-    overlay_window.emit("overlay-config", &overlay_config)
-        .map_err(|e| format!("Failed to send config to overlay: {}", e))?;
+    // Save the session data to the store for the overlay to retrieve
+    let store = app_handle.store("session.json")
+        .map_err(|e| format!("Failed to get store: {}", e))?;
+    store.set("session-config", json!({
+        "message": message,
+        "delay": delay
+    }));
+    store.save()
+        .map_err(|e| format!("Failed to save store: {}", e))?;
+    println!("Session data saved to store");
 
     // Auto-close the overlay after the specified delay
     tokio::spawn(async move {
         println!("Starting timer for {} seconds", delay);
         tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
-        println!("Timer completed, closing overlay window after {} seconds", delay);
+        println!(
+            "Timer completed, closing overlay window after {} seconds",
+            delay
+        );
         match overlay_window.close() {
             Ok(_) => println!("Overlay window closed successfully"),
             Err(e) => println!("Failed to close overlay window: {}", e),
@@ -68,8 +96,9 @@ async fn create_overlay_window(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, create_overlay_window])
+        .invoke_handler(tauri::generate_handler![greet, create_overlay_window, get_session_config])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
