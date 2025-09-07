@@ -1,0 +1,14 @@
+---
+alwaysApply: false
+---
+I want to build a simple reminder app. It will take three inputs from user 1. Session Duration in minutes, 2. Session End Message / Reminder, 3. Reminder Screen Delay.
+
+User journey: A user will open the app. A small window will open. User put their session inputs, e.g. (1] 15 min, 2] Make Coffee, 3] 30 seconds). After giving those inputs, the user will start the session after 15 minutes. A Window/Overlay will be opened on top of all windows, and it cannot be removed. So once it opens, it will stay for the user-input delay.  After the delay, the window or overlay should automatically be removed. Tech Stack: Tauri (Rust-based desktop application), React Frontend with Shadcn UI.
+
+Development Environment: Mac OS. So make it work on Mac First.I want to build a simple reminder app. It will take three inputs from user 1. Session Duration in minutes, 2. Session End Message / Reminder, 3. Reminder Screen Delay.
+
+User journey: A user will open the app. A small window will open. User put their session inputs, e.g. (1] 15 min, 2] Make Coffee, 3] 30 seconds). After giving those inputs, the user will start the session after 15 minutes. A Window/Overlay will be opened on top of all windows, and it cannot be removed. So once it opens, it will stay for the user-input delay.  After the delay, the window or overlay should automatically be removed. Tech Stack: Tauri (Rust-based desktop application), React Frontend with Shadcn UI.
+
+Development Environment: Mac OS. So make it work on Mac First.
+
+Remember no over complicate things.
