@@ -13,9 +13,10 @@
     "windows": [
       {
         "title": "break",
-        "width": 400,
-        "height": 500,
-        "resizable": true,
+        "width": 375,
+        "height": 150,
+        "resizable": false,
+        "maximizable": false,
         "center": true,
         "transparent": true,
         "decorations": false

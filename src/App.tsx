@@ -1,10 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { useState } from "react";
 import "./App.css";
 
@@ -17,8 +16,8 @@ interface SessionConfig {
 function App() {
   const [sessionConfig, setSessionConfig] = useState<SessionConfig>({
     duration: 0,
-    message: "Make Coffee",
-    delay: 3
+    message: "",
+    delay: 0
   });
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -29,19 +28,6 @@ function App() {
       await window.minimize();
     } catch (error) {
       console.error("Failed to minimize window:", error);
-    }
-  };
-
-  const handleMaximize = async () => {
-    try {
-      const window = getCurrentWindow();
-      if (await window.isMaximized()) {
-        await window.unmaximize();
-      } else {
-        await window.maximize();
-      }
-    } catch (error) {
-      console.error("Failed to maximize window:", error);
     }
   };
 
@@ -111,133 +97,109 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="min-h-screen bg-white">
       {/* Custom Titlebar */}
-      <div className="bg-gray-100 border-b border-gray-200">
-        {/* Full Draggable Titlebar */}
-        <div
-          className="flex items-center justify-between px-4 py-2 cursor-move select-none"
-          data-tauri-drag-region
-        >
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          </div>
-          <div className="flex items-center space-x-1" data-tauri-drag-region="false">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleMinimize}
-              className="h-6 w-6 p-0 hover:bg-gray-200"
-            >
-              <Minus className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleMaximize}
-              className="h-6 w-6 p-0 hover:bg-gray-200"
-            >
-              <Square className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClose}
-              className="h-6 w-6 p-0 hover:bg-red-200 hover:text-red-600"
-            >
-              <X className="h-3 w-3" />
-            </Button>
+
+      <div className="">
+        <div className="bg-white">
+          {/* Full Draggable Titlebar */}
+          <div
+            className="relative flex items-center justify-between px-4 py-2 cursor-move select-none w-full gap-x-4"
+            data-tauri-drag-region
+          >
+            <div className="flex py-2 items-center space-x-2">
+              <button onClick={handleClose} data-tauri-drag-region="false" className="w-3 h-3 bg-red-500 rounded-full cursor-pointer"></button>
+              <button onClick={handleMinimize} data-tauri-drag-region="false" className="w-3 h-3 bg-yellow-500 rounded-full cursor-pointer"></button>
+            </div>
+            <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center space-y-0" >
+              <h1 className="text-sm font-bold" data-tauri-drag-region>Break Reminder</h1>
+              <p className="text-[10px] text-gray-500">
+                Release your mind and take a break
+              </p>
+            </div>
+            <div className="flex items-center space-x-1">
+              {!isSessionActive ? <Button
+                onClick={startSession}
+                size='sm'
+                className="cursor-pointer bg-blue-600 hover:bg-blue-700"
+                variant='default'
+              >
+                <Play className="w-3! h-3!" />
+              </Button> : <Button
+                onClick={stopSession}
+                size='sm'
+                className="cursor-pointer bg-red-600 hover:bg-red-700"
+                variant='destructive'
+              >
+                <Pause className="w-3! h-3!" />
+              </Button>}
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="p-4">
         <div className="max-w-md mx-auto">
-          <Card className="shadow-lg">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-gray-800">Break Reminder</CardTitle>
-              <CardDescription>
-                Set your session duration and reminder message
-              </CardDescription>
-            </CardHeader>
-          <CardContent className="space-y-6">
-            {!isSessionActive ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Session Duration (minutes)</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    min="1"
-                    max="480"
-                    value={sessionConfig.duration}
-                    onChange={(e) => setSessionConfig(prev => ({
-                      ...prev,
-                      duration: parseInt(e.target.value) || 15
-                    }))}
-                    placeholder="15"
-                  />
-                </div>
+          <Card className=" rounded-none p-3">
+            <CardContent className="space-y-3 px-0">
+              {!isSessionActive ? (
+                <>
+                  <div className="flex gap-x-3">
+                    <div className="flex-1 flex items-cente space-x-2">
+                      <Input
+                        id="duration"
+                        type="number"
+                        min="0"
+                        max="480"
+                        value={sessionConfig.duration == -1 ? "" : sessionConfig.duration}
+                        onChange={(e) => setSessionConfig(prev => ({
+                          ...prev,
+                          duration: e.target.valueAsNumber || 0
+                        }))}
+                        className="flex-1 text-xs p-2 h-8"
+                        placeholder="Session Duration (min)"
+                      />
+                    </div>
+                    <div className=" flex-1">
+                      <Input
+                        id="delay"
+                        type="number"
+                        min="0"
+                        max="300"
+                        value={sessionConfig.delay == -1 ? '' : sessionConfig.delay}
+                        onChange={(e) => setSessionConfig(prev => ({
+                          ...prev,
+                          delay: e.target.valueAsNumber || 0
+                        }))}
+                        placeholder="Overlay stay for (sec)"
 
-                <div className="space-y-2">
-                  <Label htmlFor="message">Reminder Message</Label>
-                  <Input
-                    id="message"
-                    type="text"
-                    value={sessionConfig.message}
-                    onChange={(e) => setSessionConfig(prev => ({
-                      ...prev,
-                      message: e.target.value
-                    }))}
-                    placeholder="Make Coffee"
-                  />
-                </div>
+                        className="flex-1 text-xs p-2 h-8"
+                      />
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="delay">Reminder Screen Delay (seconds)</Label>
-                  <Input
-                    id="delay"
-                    type="number"
-                    min="5"
-                    max="300"
-                    value={sessionConfig.delay}
-                    onChange={(e) => setSessionConfig(prev => ({
-                      ...prev,
-                      delay: parseInt(e.target.value) || 30
-                    }))}
-                    placeholder="30"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Input
+                      id="message"
+                      type="text"
+                      value={sessionConfig.message}
+                      onChange={(e) => setSessionConfig(prev => ({
+                        ...prev,
+                        message: e.target.value
+                      }))}
+                      placeholder="Break Message"
+                      className="flex-1 text-xs p-2 h-8"
+                    />
+                  </div>
 
-                <Button
-                  onClick={startSession}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                >
-                  Start Session
-                </Button>
-              </>
-            ) : (
-              <div className="text-center space-y-4">
-                <div className="text-4xl font-mono font-bold text-blue-600">
-                  {formatTime(timeRemaining)}
+                </>
+              ) : (
+                <div className="text-center h-[76px] flex items-center justify-center">
+                  <div className="text-4xl font-mono font-bold text-blue-600">
+                    {formatTime(timeRemaining)}
+                  </div>
                 </div>
-                <p className="text-gray-600">
-                  Session in progress...
-                </p>
-                <Button
-                  onClick={stopSession}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Stop Session
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
