@@ -1,3 +1,7 @@
+import { MantineProvider } from '@mantine/core';
+import '@mantine/core/styles.css';
+import { Notifications } from '@mantine/notifications';
+import '@mantine/notifications/styles.css';
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -10,6 +14,9 @@ const rootElement = document.getElementById(isOverlay ? "overlay-root" : "root")
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    {isOverlay ? <OverlayApp /> : <App />}
+    <MantineProvider>
+      <Notifications />
+      {isOverlay ? <OverlayApp /> : <App />}
+    </MantineProvider>
   </React.StrictMode>,
 );

@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, Container, Text, Title } from '@mantine/core';
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import "./App.css";
@@ -48,33 +48,67 @@ function OverlayApp() {
 
   if (!config) {
     return (
-      <div className="fixed h-screen w-screen inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-xl" >
-        <Card className="bg-white/95 backdrop-blur-sm shadow-2xl">
-          <CardContent className="p-8 text-center">
-            <div className="text-2xl font-bold text-gray-800">
+      <div style={{
+        position: 'fixed',
+        height: '100vh',
+        width: '100vw',
+        top: 0,
+        left: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(12px)'
+      }}>
+        <Card shadow="xl" radius="md" style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)' }}>
+          <Container p="xl" style={{ textAlign: 'center' }}>
+            <Title order={2} c="dark">
               Loading...
-            </div>
-          </CardContent>
+            </Title>
+          </Container>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="fixed h-screen w-screen inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-xl">
-      <Card className="bg-white/95 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto border-0">
-        <CardContent className="p-12 text-center">
-          <div className="text-8xl mb-6">⏰</div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-6">
+    <div style={{
+      position: 'fixed',
+      height: '100vh',
+      width: '100vw',
+      top: 0,
+      left: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 50,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backdropFilter: 'blur(12px)'
+    }}>
+      <Card
+        shadow="xl"
+        radius="md"
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(8px)',
+          maxWidth: '32rem',
+          margin: '0 auto',
+          border: 'none'
+        }}
+      >
+        <Container p="xl" style={{ textAlign: 'center' }}>
+          <Text size="8xl" mb="md">⏰</Text>
+          <Title order={1} c="dark" mb="md">
             Break Time!
-          </h1>
-          <p className="text-2xl text-gray-600 mb-8 leading-relaxed">
+          </Title>
+          <Text size="xl" c="dimmed" mb="lg" style={{ lineHeight: 1.6 }}>
             {config.message}
-          </p>
-          <div className="text-xl text-gray-500 font-mono">
+          </Text>
+          <Text size="lg" c="dimmed" ff="monospace">
             Auto-closing in {timeRemaining} seconds
-          </div>
-        </CardContent>
+          </Text>
+        </Container>
       </Card>
     </div>
   );
