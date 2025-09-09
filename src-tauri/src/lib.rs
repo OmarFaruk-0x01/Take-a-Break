@@ -4,6 +4,14 @@ use tauri_plugin_store::StoreExt;
 use serde_json::json;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+struct SessionConfig {
+    duration: u64, // in minutes
+    message: String,
+    delay: u64, // in seconds
+    start_time: u64, // Unix timestamp when session started
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct OverlayConfig {
     message: String,
     delay: u64,
@@ -13,6 +21,83 @@ struct OverlayConfig {
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+async fn start_session(
+    app_handle: tauri::AppHandle,
+    duration: u64,
+    message: String,
+    delay: u64,
+) -> Result<(), String> {
+    let start_time = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| format!("Failed to get current time: {}", e))?
+        .as_secs();
+
+    let session_config = SessionConfig {
+        duration,
+        message: message.clone(),
+        delay,
+        start_time,
+    };
+
+    // Save session config to store
+    let store = app_handle.store("session.json")
+        .map_err(|e| format!("Failed to get store: {}", e))?;
+    store.set("active-session", json!(session_config));
+    store.save()
+        .map_err(|e| format!("Failed to save session: {}", e))?;
+
+    println!("Session started: {} minutes, started at {}", duration, start_time);
+
+    // Start the backend timer
+    let app_handle_clone = app_handle.clone();
+    let message_clone = message.clone();
+    let delay_clone = delay;
+    tokio::spawn(async move {
+        let duration_seconds = duration * 60;
+        println!("Backend timer started for {} seconds", duration_seconds);
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(duration_seconds)).await;
+
+        println!("Session timer completed, creating overlay");
+
+        // Create overlay window
+        if let Err(e) = create_overlay_window(app_handle_clone, message_clone, delay_clone).await {
+            println!("Failed to create overlay window: {}", e);
+        }
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_session_status(app_handle: tauri::AppHandle) -> Result<Option<SessionConfig>, String> {
+    let store = app_handle.store("session.json")
+        .map_err(|e| format!("Failed to get store: {}", e))?;
+
+    match store.get("active-session") {
+        Some(session_value) => {
+            let session: SessionConfig = serde_json::from_value(session_value.clone())
+                .map_err(|e| format!("Failed to parse session config: {}", e))?;
+            Ok(Some(session))
+        }
+        None => Ok(None)
+    }
+}
+
+#[tauri::command]
+async fn stop_session(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let store = app_handle.store("session.json")
+        .map_err(|e| format!("Failed to get store: {}", e))?;
+
+    store.delete("active-session");
+    store.save()
+        .map_err(|e| format!("Failed to save store: {}", e))?;
+
+    println!("Session stopped");
+    Ok(())
 }
 
 #[tauri::command]
@@ -151,7 +236,18 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, create_overlay_window, get_session_config, hide_main_window, minimize_window, maximize_window, close_window])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            start_session,
+            get_session_status,
+            stop_session,
+            create_overlay_window,
+            get_session_config,
+            hide_main_window,
+            minimize_window,
+            maximize_window,
+            close_window
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

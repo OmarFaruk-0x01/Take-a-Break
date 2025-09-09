@@ -1,16 +1,21 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ActionIcon, Button, Card, Container, Group, Stack, Text, TextInput } from '@mantine/core';
+import { IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react';
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Pause, Play } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 interface SessionConfig {
   duration: number;
   message: string;
   delay: number;
+}
+
+interface BackendSessionConfig {
+  duration: number;
+  message: string;
+  delay: number;
+  start_time: number;
 }
 
 function App() {
@@ -21,6 +26,60 @@ function App() {
   });
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
+
+  // Check for existing session on app load
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      try {
+        const backendSession = await invoke<BackendSessionConfig | null>("get_session_status");
+        if (backendSession) {
+          const now = Math.floor(Date.now() / 1000);
+          const elapsed = now - backendSession.start_time;
+          const remaining = (backendSession.duration * 60) - elapsed;
+
+          if (remaining > 0) {
+            setIsSessionActive(true);
+            setTimeRemaining(remaining);
+
+            // Start display timer
+            const displayTimer = setInterval(async () => {
+              try {
+                const currentSession = await invoke<BackendSessionConfig | null>("get_session_status");
+                if (currentSession) {
+                  const currentTime = Math.floor(Date.now() / 1000);
+                  const currentElapsed = currentTime - currentSession.start_time;
+                  const currentRemaining = (currentSession.duration * 60) - currentElapsed;
+
+                  if (currentRemaining <= 0) {
+                    clearInterval(displayTimer);
+                    setTimeRemaining(0);
+                    setIsSessionActive(false);
+                  } else {
+                    setTimeRemaining(currentRemaining);
+                  }
+                } else {
+                  clearInterval(displayTimer);
+                  setIsSessionActive(false);
+                  setTimeRemaining(0);
+                }
+              } catch (error) {
+                console.error("Failed to sync with backend timer:", error);
+              }
+            }, 1000);
+
+            (window as any).displayTimer = displayTimer;
+          } else {
+            // Session expired, clean it up
+            await invoke("stop_session");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check existing session:", error);
+      }
+    };
+
+    checkExistingSession();
+  }, []);
 
   const handleMinimize = async () => {
     try {
@@ -41,31 +100,50 @@ function App() {
   };
 
   const startSession = async () => {
-    setIsSessionActive(true);
-    setTimeRemaining(sessionConfig.duration * 60); // Convert to seconds
-
-    // Hide the main window immediately when session starts
-    // try {
-    //   await invoke("hide_main_window");
-    // } catch (error) {
-    //   console.error("Failed to hide main window:", error);
-    // }
-
-    // Start the timer
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Show overlay window
-          showOverlayWindow();
-          return 0;
-        }
-        return prev - 1;
+    try {
+      // Start the session using the backend timer
+      await invoke("start_session", {
+        duration: sessionConfig.duration,
+        message: sessionConfig.message,
+        delay: sessionConfig.delay
       });
-    }, 1000);
 
-    // Store timer reference for cleanup
-    (window as any).sessionTimer = timer;
+      setIsSessionActive(true);
+      setTimeRemaining(sessionConfig.duration * 60); // Convert to seconds for display
+
+      // Start a display timer that syncs with the backend
+      const displayTimer = setInterval(async () => {
+        try {
+          const backendSession = await invoke<BackendSessionConfig | null>("get_session_status");
+          if (backendSession) {
+            const now = Math.floor(Date.now() / 1000);
+            const elapsed = now - backendSession.start_time;
+            const remaining = (backendSession.duration * 60) - elapsed;
+
+            if (remaining <= 0) {
+              clearInterval(displayTimer);
+              setTimeRemaining(0);
+              setIsSessionActive(false);
+            } else {
+              setTimeRemaining(remaining);
+            }
+          } else {
+            // Session was stopped
+            clearInterval(displayTimer);
+            setIsSessionActive(false);
+            setTimeRemaining(0);
+          }
+        } catch (error) {
+          console.error("Failed to sync with backend timer:", error);
+        }
+      }, 1000);
+
+      // Store timer reference for cleanup
+      (window as any).displayTimer = displayTimer;
+
+    } catch (error) {
+      console.error("Failed to start session:", error);
+    }
   };
 
   const showOverlayWindow = async () => {
@@ -81,13 +159,22 @@ function App() {
     setIsSessionActive(false);
   };
 
-  const stopSession = () => {
-    if ((window as any).sessionTimer) {
-      clearInterval((window as any).sessionTimer);
-      (window as any).sessionTimer = null;
+  const stopSession = async () => {
+    try {
+      // Stop the session in the backend
+      await invoke("stop_session");
+
+      // Clear the display timer
+      if ((window as any).displayTimer) {
+        clearInterval((window as any).displayTimer);
+        (window as any).displayTimer = null;
+      }
+
+      setIsSessionActive(false);
+      setTimeRemaining(0);
+    } catch (error) {
+      console.error("Failed to stop session:", error);
     }
-    setIsSessionActive(false);
-    setTimeRemaining(0);
   };
 
   const formatTime = (seconds: number) => {
@@ -97,11 +184,10 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div style={{ minHeight: '100vh', backgroundColor: 'white' }}>
       {/* Custom Titlebar */}
-
-      <div className="">
-        <div className="bg-white">
+      <div>
+        <div style={{ backgroundColor: 'white' }}>
           {/* Full Draggable Titlebar */}
           <div
             className="relative flex items-center justify-between px-4 py-2 cursor-move select-none w-full gap-x-4"
@@ -118,88 +204,78 @@ function App() {
               </p>
             </div>
             <div className="flex items-center space-x-1">
-              {!isSessionActive ? <Button
-                onClick={startSession}
-                size='sm'
-                className="cursor-pointer bg-blue-600 hover:bg-blue-700"
-                variant='default'
-              >
-                <Play className="w-3! h-3!" />
-              </Button> : <Button
-                onClick={stopSession}
-                size='sm'
-                className="cursor-pointer bg-red-600 hover:bg-red-700"
-                variant='destructive'
-              >
-                <Pause className="w-3! h-3!" />
-              </Button>}
+              {!isSessionActive ? (
+                <ActionIcon
+                  onClick={startSession}
+                  size="md"
+                  color="blue"
+                >
+                  <IconPlayerPlay size={12} />
+                </ActionIcon>
+              ) : (
+                <Button
+                  onClick={stopSession}
+                  size="md"
+                  color="red"
+                >
+                  <IconPlayerPause size={12} />
+                </Button>
+              )}
             </div>
           </div>
         </div>
-        <div className="max-w-md mx-auto">
-          <Card className=" rounded-none p-3">
-            <CardContent className="space-y-3 px-0">
+        <Container px="md">
+          <Card padding="md" radius="md">
+            <Stack gap="md">
               {!isSessionActive ? (
                 <>
-                  <div className="flex gap-x-3">
-                    <div className="flex-1 flex items-cente space-x-2">
-                      <Input
-                        id="duration"
-                        type="number"
-                        min="0"
-                        max="480"
-                        value={sessionConfig.duration == -1 ? "" : sessionConfig.duration}
-                        onChange={(e) => setSessionConfig(prev => ({
-                          ...prev,
-                          duration: e.target.valueAsNumber || 0
-                        }))}
-                        className="flex-1 text-xs p-2 h-8"
-                        placeholder="Session Duration (min)"
-                      />
-                    </div>
-                    <div className=" flex-1">
-                      <Input
-                        id="delay"
-                        type="number"
-                        min="0"
-                        max="300"
-                        value={sessionConfig.delay == -1 ? '' : sessionConfig.delay}
-                        onChange={(e) => setSessionConfig(prev => ({
-                          ...prev,
-                          delay: e.target.valueAsNumber || 0
-                        }))}
-                        placeholder="Overlay stay for (sec)"
-
-                        className="flex-1 text-xs p-2 h-8"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Input
-                      id="message"
-                      type="text"
-                      value={sessionConfig.message}
+                  <Group grow>
+                    <TextInput
+                      type="number"
+                      min={0}
+                      max={480}
+                      value={sessionConfig.duration === 0 ? "" : sessionConfig.duration}
                       onChange={(e) => setSessionConfig(prev => ({
                         ...prev,
-                        message: e.target.value
+                        duration: parseInt(e.target.value) || 0
                       }))}
-                      placeholder="Break Message"
-                      className="flex-1 text-xs p-2 h-8"
+                      placeholder="Session Duration (min)"
+                      size="xs"
                     />
-                  </div>
+                    <TextInput
+                      type="number"
+                      min={0}
+                      max={300}
+                      value={sessionConfig.delay === 0 ? "" : sessionConfig.delay}
+                      onChange={(e) => setSessionConfig(prev => ({
+                        ...prev,
+                        delay: parseInt(e.target.value) || 0
+                      }))}
+                      placeholder="Overlay stay for (sec)"
+                      size="xs"
+                    />
+                  </Group>
 
+                  <TextInput
+                    value={sessionConfig.message}
+                    onChange={(e) => setSessionConfig(prev => ({
+                      ...prev,
+                      message: e.target.value
+                    }))}
+                    placeholder="Break Message"
+                    size="xs"
+                  />
                 </>
               ) : (
-                <div className="text-center h-[76px] flex items-center justify-center">
-                  <div className="text-4xl font-mono font-bold text-blue-600">
+                <div style={{ textAlign: 'center', height: '76px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text size="xl" fw={700} c="blue" ff="monospace">
                     {formatTime(timeRemaining)}
-                  </div>
+                  </Text>
                 </div>
               )}
-            </CardContent>
+            </Stack>
           </Card>
-        </div>
+        </Container>
       </div>
     </div>
   );
