@@ -1,4 +1,4 @@
-import { ActionIcon, Button, Card, Container, Group, Stack, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Button, Card, Container, Stack, Text, TextInput } from '@mantine/core';
 import { IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react';
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -105,7 +105,7 @@ function App() {
       await invoke("start_session", {
         duration: sessionConfig.duration,
         message: sessionConfig.message,
-        delay: sessionConfig.delay
+        delay: 0
       });
 
       setIsSessionActive(true);
@@ -229,32 +229,33 @@ function App() {
             <Stack gap="md">
               {!isSessionActive ? (
                 <>
-                  <Group grow>
-                    <TextInput
-                      type="number"
-                      min={0}
-                      max={480}
-                      value={sessionConfig.duration === 0 ? "" : sessionConfig.duration}
-                      onChange={(e) => setSessionConfig(prev => ({
-                        ...prev,
-                        duration: parseInt(e.target.value) || 0
-                      }))}
-                      placeholder="Session Duration (min)"
-                      size="xs"
-                    />
-                    <TextInput
-                      type="number"
-                      min={0}
-                      max={300}
-                      value={sessionConfig.delay === 0 ? "" : sessionConfig.delay}
-                      onChange={(e) => setSessionConfig(prev => ({
-                        ...prev,
-                        delay: parseInt(e.target.value) || 0
-                      }))}
-                      placeholder="Overlay stay for (sec)"
-                      size="xs"
-                    />
-                  </Group>
+                  <TextInput
+                    type="number"
+                    min={0}
+                    max={480}
+                    value={sessionConfig.duration === -1 ? "" : sessionConfig.duration}
+                    onChange={(e) => setSessionConfig(prev => ({
+                      ...prev,
+                      duration: parseInt(e.target.value) || 0
+                    }))}
+                    placeholder="Session Duration (min)"
+                    size="xs"
+                    spellCheck={false}
+                  />
+
+                  {/* Delay input hidden for now - will be controlled by settings panel */}
+                  {/* <TextInput
+                    type="number"
+                    min={0}
+                    max={300}
+                    value={sessionConfig.delay === 0 ? "" : sessionConfig.delay}
+                    onChange={(e) => setSessionConfig(prev => ({
+                      ...prev,
+                      delay: parseInt(e.target.value) || 0
+                    }))}
+                    placeholder="Overlay stay for (sec)"
+                    size="xs"
+                  /> */}
 
                   <TextInput
                     value={sessionConfig.message}
@@ -264,6 +265,7 @@ function App() {
                     }))}
                     placeholder="Break Message"
                     size="xs"
+                    spellCheck={false}
                   />
                 </>
               ) : (

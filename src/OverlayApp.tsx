@@ -1,4 +1,5 @@
-import { Card, Container, Text, Title } from '@mantine/core';
+import { Button, Card, Container, Group, Text, Title } from '@mantine/core';
+import { IconX } from '@tabler/icons-react';
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import "./App.css";
@@ -10,7 +11,7 @@ interface OverlayConfig {
 
 function OverlayApp() {
   const [config, setConfig] = useState<OverlayConfig | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [isAutoCloseEnabled, setIsAutoCloseEnabled] = useState(true); // This will come from settings later
 
   useEffect(() => {
     console.log("OverlayApp mounted, requesting session config from store");
@@ -21,7 +22,6 @@ function OverlayApp() {
         const sessionConfig = await invoke<OverlayConfig>("get_session_config");
         console.log("Received session config from store:", sessionConfig);
         setConfig(sessionConfig);
-        setTimeRemaining(sessionConfig.delay);
       } catch (error) {
         console.error("Failed to load session config:", error);
       }
@@ -30,21 +30,38 @@ function OverlayApp() {
     loadSessionConfig();
   }, []);
 
+  // Debug: Log when component renders
   useEffect(() => {
-    if (!config) return;
+    console.log("OverlayApp rendered with config:", config);
+  }, [config]);
+
+  // Auto-close timer (only when auto-close is enabled)
+  useEffect(() => {
+    if (!config || !isAutoCloseEnabled) return;
 
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
+      // Auto-close logic will be handled by the backend timer
+      // This is just for cleanup if needed
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [config]);
+  }, [config, isAutoCloseEnabled]);
+
+  const handleCloseOverlay = async () => {
+    try {
+      console.log("Close overlay clicked");
+
+      // Stop any active session
+      await invoke("stop_session");
+
+      // Use the backend command to close overlay and show main window
+      await invoke("close_overlay_window");
+
+      console.log("Overlay closed successfully");
+    } catch (error) {
+      console.error("Failed to close overlay:", error);
+    }
+  };
 
   if (!config) {
     return (
@@ -105,9 +122,22 @@ function OverlayApp() {
           <Text size="xl" c="dimmed" mb="lg" style={{ lineHeight: 1.6 }}>
             {config.message}
           </Text>
-          <Text size="lg" c="dimmed" ff="monospace">
-            Auto-closing in {timeRemaining} seconds
-          </Text>
+
+          {/* Manual Control Buttons */}
+          <Group justify="center" gap="md" mt="xl">
+            <Button
+              size="lg"
+              color="red"
+              variant="outline"
+              leftSection={<IconX size={20} />}
+              onClick={handleCloseOverlay}
+              loading={false}
+              disabled={false}
+              spellCheck={false}
+            >
+              Close
+            </Button>
+          </Group>
         </Container>
       </Card>
     </div>

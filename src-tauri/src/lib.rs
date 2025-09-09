@@ -88,6 +88,22 @@ async fn get_session_status(app_handle: tauri::AppHandle) -> Result<Option<Sessi
 }
 
 #[tauri::command]
+async fn close_overlay_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(overlay_window) = app_handle.get_webview_window("overlay") {
+        overlay_window.close().map_err(|e| format!("Failed to close overlay window: {}", e))?;
+        println!("Overlay window closed via command");
+    }
+
+    // Show the main window again
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        main_window.show().map_err(|e| format!("Failed to show main window: {}", e))?;
+        println!("Main window shown after overlay close");
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 async fn stop_session(app_handle: tauri::AppHandle) -> Result<(), String> {
     let store = app_handle.store("session.json")
         .map_err(|e| format!("Failed to get store: {}", e))?;
@@ -195,6 +211,10 @@ async fn create_overlay_window(
     .build()
     .map_err(|e| format!("Failed to create overlay window: {}", e))?;
 
+    // Ensure the overlay window is shown
+    overlay_window.show().map_err(|e| format!("Failed to show overlay window: {}", e))?;
+    println!("Overlay window created and shown successfully");
+
     // Save the session data to the store for the overlay to retrieve
     let store = app_handle.store("session.json")
         .map_err(|e| format!("Failed to get store: {}", e))?;
@@ -208,23 +228,34 @@ async fn create_overlay_window(
 
     // Auto-close the overlay after the specified delay
     tokio::spawn(async move {
-        println!("Starting timer for {} seconds", delay);
-        tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
+        // Ensure minimum delay of 5 seconds to allow overlay to be visible
+        let actual_delay = if delay == 0 { 5 } else { delay };
+        println!("Starting timer for {} seconds (original delay: {})", actual_delay, delay);
+        tokio::time::sleep(tokio::time::Duration::from_secs(actual_delay)).await;
         println!(
             "Timer completed, closing overlay window after {} seconds",
-            delay
+            actual_delay
         );
-        match overlay_window.close() {
-            Ok(_) => println!("Overlay window closed successfully"),
-            Err(e) => println!("Failed to close overlay window: {}", e),
-        }
 
-        // Show the main window again after overlay closes
-        if let Some(main_window) = app_handle.get_webview_window("main") {
-            match main_window.show() {
-                Ok(_) => println!("Main window shown again"),
-                Err(e) => println!("Failed to show main window: {}", e),
+        // Check if auto-close is enabled (this will come from settings later)
+        // For now, we'll always auto-close, but this is where the setting check will go
+        let auto_close_enabled = true; // This will be read from settings
+
+        if auto_close_enabled {
+            match overlay_window.close() {
+                Ok(_) => println!("Overlay window closed successfully"),
+                Err(e) => println!("Failed to close overlay window: {}", e),
             }
+
+            // Show the main window again after overlay closes
+            if let Some(main_window) = app_handle.get_webview_window("main") {
+                match main_window.show() {
+                    Ok(_) => println!("Main window shown again"),
+                    Err(e) => println!("Failed to show main window: {}", e),
+                }
+            }
+        } else {
+            println!("Auto-close disabled, overlay remains open for manual control");
         }
     });
 
@@ -241,6 +272,7 @@ pub fn run() {
             start_session,
             get_session_status,
             stop_session,
+            close_overlay_window,
             create_overlay_window,
             get_session_config,
             hide_main_window,
