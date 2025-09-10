@@ -86,11 +86,11 @@ We welcome contributions! Here's how you can help:
 - Update documentation for any API changes
 - Ensure builds pass for both Intel and Apple Silicon Macs
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built with [Tauri](https://tauri.app/) for native performance
 - UI components from [Mantine](https://mantine.dev/)
