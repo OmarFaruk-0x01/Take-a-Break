@@ -190,7 +190,7 @@ async fn create_overlay_window(
     let overlay_window = WebviewWindowBuilder::new(
         &app_handle,
         "overlay",
-        WebviewUrl::App("overlay.html".into()),
+        WebviewUrl::App("index.html?screen=overlay".into()),
     )
     .title("Take a Break")
     .resizable(false)

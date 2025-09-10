@@ -7,7 +7,9 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import OverlayApp from "./OverlayApp";
 
-const isOverlay = window.location.pathname.includes('overlay.html');
+const searchParams = new URLSearchParams(window.location.search)
+
+const isOverlay = searchParams.get('screen') === 'overlay';
 
 const rootElement = document.getElementById(isOverlay ? "overlay-root" : "root") as HTMLElement;
 
