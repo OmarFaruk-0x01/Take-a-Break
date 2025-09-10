@@ -1,9 +1,10 @@
-import { ActionIcon, Button, Card, Container, Stack, Text, TextInput } from '@mantine/core';
-import { IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react';
+import { Card, Container, Stack } from '@mantine/core';
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
 import "./App.css";
+import Header from './Header';
+import IdleView from './IdleView';
+import ProgressView from './ProgressView';
 
 interface SessionConfig {
   duration: number;
@@ -20,14 +21,13 @@ interface BackendSessionConfig {
 
 function App() {
   const [sessionConfig, setSessionConfig] = useState<SessionConfig>({
-    duration: 0,
+    duration: 5,
     message: "",
     delay: 0
   });
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
 
-  // Check for existing session on app load
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
@@ -41,7 +41,6 @@ function App() {
             setIsSessionActive(true);
             setTimeRemaining(remaining);
 
-            // Start display timer
             const displayTimer = setInterval(async () => {
               try {
                 const currentSession = await invoke<BackendSessionConfig | null>("get_session_status");
@@ -69,7 +68,6 @@ function App() {
 
             (window as any).displayTimer = displayTimer;
           } else {
-            // Session expired, clean it up
             await invoke("stop_session");
           }
         }
@@ -81,27 +79,10 @@ function App() {
     checkExistingSession();
   }, []);
 
-  const handleMinimize = async () => {
-    try {
-      const window = getCurrentWindow();
-      await window.minimize();
-    } catch (error) {
-      console.error("Failed to minimize window:", error);
-    }
-  };
 
-  const handleClose = async () => {
-    try {
-      const window = getCurrentWindow();
-      await window.close();
-    } catch (error) {
-      console.error("Failed to close window:", error);
-    }
-  };
 
   const startSession = async () => {
     try {
-      // Start the session using the backend timer
       await invoke("start_session", {
         duration: sessionConfig.duration,
         message: sessionConfig.message,
@@ -109,9 +90,8 @@ function App() {
       });
 
       setIsSessionActive(true);
-      setTimeRemaining(sessionConfig.duration * 60); // Convert to seconds for display
+      setTimeRemaining(sessionConfig.duration * 60);
 
-      // Start a display timer that syncs with the backend
       const displayTimer = setInterval(async () => {
         try {
           const backendSession = await invoke<BackendSessionConfig | null>("get_session_status");
@@ -128,7 +108,6 @@ function App() {
               setTimeRemaining(remaining);
             }
           } else {
-            // Session was stopped
             clearInterval(displayTimer);
             setIsSessionActive(false);
             setTimeRemaining(0);
@@ -138,7 +117,6 @@ function App() {
         }
       }, 1000);
 
-      // Store timer reference for cleanup
       (window as any).displayTimer = displayTimer;
 
     } catch (error) {
@@ -146,134 +124,23 @@ function App() {
     }
   };
 
-  const showOverlayWindow = async () => {
-    try {
-      // Create overlay window with Tauri
-      await invoke("create_overlay_window", {
-        message: sessionConfig.message,
-        delay: sessionConfig.delay
-      });
-    } catch (error) {
-      console.error("Failed to create overlay window:", error);
-    }
-    setIsSessionActive(false);
-  };
-
-  const stopSession = async () => {
-    try {
-      // Stop the session in the backend
-      await invoke("stop_session");
-
-      // Clear the display timer
-      if ((window as any).displayTimer) {
-        clearInterval((window as any).displayTimer);
-        (window as any).displayTimer = null;
-      }
-
-      setIsSessionActive(false);
-      setTimeRemaining(0);
-    } catch (error) {
-      console.error("Failed to stop session:", error);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'white' }}>
-      {/* Custom Titlebar */}
+    <div className='rounded overflow-hidden border h-screen w-screen bg-white'>
+      <Header />
       <div>
-        <div style={{ backgroundColor: 'white' }}>
-          {/* Full Draggable Titlebar */}
-          <div
-            className="relative flex items-center justify-between px-4 py-2 cursor-move select-none w-full gap-x-4"
-            data-tauri-drag-region
-          >
-            <div className="flex py-2 items-center space-x-2">
-              <button onClick={handleClose} data-tauri-drag-region="false" className="w-3 h-3 bg-red-500 rounded-full cursor-pointer"></button>
-              <button onClick={handleMinimize} data-tauri-drag-region="false" className="w-3 h-3 bg-yellow-500 rounded-full cursor-pointer"></button>
-            </div>
-            <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center space-y-0" >
-              <h1 className="text-sm font-bold" data-tauri-drag-region>Break Reminder</h1>
-              <p className="text-[10px] text-gray-500">
-                Release your mind and take a break
-              </p>
-            </div>
-            <div className="flex items-center space-x-1">
-              {!isSessionActive ? (
-                <ActionIcon
-                  onClick={startSession}
-                  size="md"
-                  color="blue"
-                >
-                  <IconPlayerPlay size={12} />
-                </ActionIcon>
-              ) : (
-                <Button
-                  onClick={stopSession}
-                  size="md"
-                  color="red"
-                >
-                  <IconPlayerPause size={12} />
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
         <Container px="md">
           <Card padding="md" radius="md">
-            <Stack gap="md">
+            <Stack gap="lg" justify='center' align='center'>
               {!isSessionActive ? (
-                <>
-                  <TextInput
-                    type="number"
-                    min={0}
-                    max={480}
-                    value={sessionConfig.duration === -1 ? "" : sessionConfig.duration}
-                    onChange={(e) => setSessionConfig(prev => ({
-                      ...prev,
-                      duration: parseInt(e.target.value) || 0
-                    }))}
-                    placeholder="Session Duration (min)"
-                    size="xs"
-                    spellCheck={false}
-                  />
-
-                  {/* Delay input hidden for now - will be controlled by settings panel */}
-                  {/* <TextInput
-                    type="number"
-                    min={0}
-                    max={300}
-                    value={sessionConfig.delay === 0 ? "" : sessionConfig.delay}
-                    onChange={(e) => setSessionConfig(prev => ({
-                      ...prev,
-                      delay: parseInt(e.target.value) || 0
-                    }))}
-                    placeholder="Overlay stay for (sec)"
-                    size="xs"
-                  /> */}
-
-                  <TextInput
-                    value={sessionConfig.message}
-                    onChange={(e) => setSessionConfig(prev => ({
-                      ...prev,
-                      message: e.target.value
-                    }))}
-                    placeholder="Break Message"
-                    size="xs"
-                    spellCheck={false}
-                  />
-                </>
+                <IdleView
+                  sessionConfig={sessionConfig}
+                  setSessionConfig={setSessionConfig}
+                  startSession={startSession}
+                />
               ) : (
-                <div style={{ textAlign: 'center', height: '76px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text size="xl" fw={700} c="blue" ff="monospace">
-                    {formatTime(timeRemaining)}
-                  </Text>
-                </div>
+                <ProgressView timeRemaining={timeRemaining} setIsSessionActive={setIsSessionActive}
+                />
               )}
             </Stack>
           </Card>

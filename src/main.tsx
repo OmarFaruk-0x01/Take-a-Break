@@ -7,14 +7,29 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import OverlayApp from "./OverlayApp";
 
-// Check if we're in the overlay window
 const isOverlay = window.location.pathname.includes('overlay.html');
 
 const rootElement = document.getElementById(isOverlay ? "overlay-root" : "root") as HTMLElement;
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <MantineProvider>
+    <MantineProvider theme={{
+      fontFamily: 'Baloo 2, sans-serif',
+      primaryColor: 'primary',
+      colors: {
+        primary: ["#f7f2f3",
+          "#e7e3e3",
+          "#d1c3c4",
+          "#bca2a3",
+          "#aa8586",
+          "#a07274",
+          "#9b696b",
+          "#88585a",
+          "#7a4d4f",
+          "#5c3739"
+        ],
+      }
+    }}>
       <Notifications />
       {isOverlay ? <OverlayApp /> : <App />}
     </MantineProvider>

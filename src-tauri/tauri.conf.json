@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "break",
-  "version": "0.1.0",
-  "identifier": "com.dev-kit.break",
+  "productName": "Take a Break",
+  "version": "0.0.1",
+  "identifier": "take.a.break",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "break",
+        "title": "Take a Break",
         "width": 375,
-        "height": 150,
+        "height": 300,
         "resizable": false,
         "maximizable": false,
         "center": true,
