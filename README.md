@@ -79,13 +79,6 @@ We welcome contributions! Here's how you can help:
 3. **Code Contributions**: Fork the repo, create a feature branch, and submit a PR
 4. **Documentation**: Help improve our documentation and examples
 
-### Development Guidelines
-
-- Follow the existing code style and patterns
-- Add tests for new features
-- Update documentation for any API changes
-- Ensure builds pass for both Intel and Apple Silicon Macs
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
