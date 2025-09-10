@@ -11,7 +11,7 @@ interface OverlayConfig {
 
 function OverlayApp() {
   const [config, setConfig] = useState<OverlayConfig | null>(null);
-  const [isAutoCloseEnabled, setIsAutoCloseEnabled] = useState(true); // This will come from settings later
+
 
   useEffect(() => {
     const loadSessionConfig = async () => {
@@ -97,7 +97,6 @@ function OverlayApp() {
               </Text>
             </div>
           )}
-          {/* Manual Control Buttons */}
           <Group justify="center" gap="md" mt="xl">
             <Button
               size="xs"
